@@ -1,58 +1,93 @@
-import sys
-import argparse
 import logging
-from utils import convert_key_value_string_to_dict
-from classes.pdf_report import PDFReport
+import os
+import sys
 
+import click
+from dotenv import load_dotenv
 
-# Constants
-REPORT_DEFINITION_PATH: str = "./report_definitions"
-PDF_TEMPLATE_PATH: str = "./source_pdfs"
+from . import __version__ as app_version
 
+# Setup logging
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger()
-logger.setLevel(level=logging.INFO)
+
+# Load our environment file if it is present
+load_dotenv(dotenv_path=".env")
+
+
+@click.command()
+@click.option(
+    "--version/--no-version",
+    type=bool,
+    default=False,
+    show_default=False,
+    required=True,
+    help="Prints the Oracle Object Tracker version and exits."
+)
+@click.option(
+    "--username",
+    type=str,
+    default=os.getenv("DATABASE_USERNAME"),
+    show_default=True,
+    required=True,
+    help="The Oracle database username to connect with."
+)
+@click.option(
+    "--password",
+    type=str,
+    default=os.getenv("DATABASE_PASSWORD"),
+    show_default=False,
+    required=True,
+    help="The Oracle database password to connect with."
+)
+@click.option(
+    "--hostname",
+    type=str,
+    default=os.getenv("DATABASE_HOSTNAME"),
+    show_default=True,
+    required=True,
+    help="The Oracle database hostname to connect to."
+)
+@click.option(
+    "--service-name",
+    type=str,
+    default=os.getenv("DATABASE_SERVICE_NAME"),
+    show_default=True,
+    required=True,
+    help="The Oracle database service name to connect to."
+)
+@click.option(
+    "--port",
+    type=int,
+    default=os.getenv("DATABASE_PORT"),
+    show_default=True,
+    required=True,
+    help="The Oracle database port to connect to."
+)
+@click.option(
+    "--log-level",
+    type=str,
+    default=os.getenv("LOGGING_LEVEL", "INFO"),
+    show_default=True,
+    required=True,
+    help="The logging level to use for the application."
+)
+def main(version: bool,
+         username: str,
+         password: str,
+         hostname: str,
+         service_name: str,
+         port: int,
+         log_level: str
+         ):
+    if version:
+        print(f"Oracle Database Tracker - version: {app_version}")
+        return
+
+    logger.setLevel(level=getattr(logging, log_level))
+
+    logger.info(msg="Starting Oracle Object Tracker application.")
 
 
 if __name__ == "__main__":
-    try:
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--output-filename",
-                            type=str,
-                            required=True,
-                            help="Enter the name of the report output PDF filename to be created in the ./output_files directory"
-                            )
-        parser.add_argument("--report-definition-filename",
-                            type=str,
-                            required=True,
-                            help="Enter the name of the report definition YAML file in the ./report_definitions directory"
-                            )
-        parser.add_argument("--query-parameters",
-                            type=str,
-                            required=False,
-                            help="Enter a comma-delimited list of key=value pair args.  Example: 'year=2021,color=blue'"
-                            )
-        parser.add_argument('--run-preprocessing', action='store_true')
-        parser.add_argument('--no-run-preprocessing', dest='run_preprocessing', action='store_false')
-        parser.set_defaults(run_preprocessing=True)
-
-        args = parser.parse_args()
-        logging.info(msg=(f"Module {__file__} was called with arguments:\n"
-                          f"--output-filename = '{args.output_filename}'\n"
-                          f"--report-definition-filename = '{args.report_definition_filename}'\n"
-                          f"--query-parameters = '{args.query_parameters}'\n"
-                          f"--run-preprocessing = {args.run_preprocessing}"
-                          )
-                     )
-
-        pdf_report = PDFReport(output_filename=args.output_filename,
-                               report_definition_filename=args.report_definition_filename,
-                               query_parameter_dict=convert_key_value_string_to_dict(input_str=args.query_parameters.strip('"')),
-                               run_preprocessing=args.run_preprocessing
-                               )
-        pdf_report.generate_pdf()
-    except Exception as e:
-        logger.error(msg=str(e))
-        raise
-    else:
-        logger.info(msg=f"Module: {__file__} ran successfully.")
+    main()
