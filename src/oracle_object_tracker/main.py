@@ -86,7 +86,7 @@ def main(version: bool,
 
     logger.setLevel(level=getattr(logging, log_level))
 
-    logger.info(msg="Starting Oracle Object Tracker application.")
+    logger.info(msg=f"Starting Oracle Object Tracker application - version: {app_version}")
 
 
 if __name__ == "__main__":
