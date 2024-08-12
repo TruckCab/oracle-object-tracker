@@ -44,7 +44,7 @@ class OracleDatabaseTracker:
                 print(row)
 
     def _connect_to_database(self):
-        oracledb.init_oracle_client(lib_dir=os.environ.get("ORACLE_HOME"))
+        oracledb.init_oracle_client(lib_dir=os.getenv("ORACLE_HOME"))
         dsn = oracledb.makedsn(host=self._hostname,
                                port=self._port,
                                service_name=self._service_name
