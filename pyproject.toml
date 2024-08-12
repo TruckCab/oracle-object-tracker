@@ -1,0 +1,68 @@
+[build-system]
+requires      = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["./src"]  # list of folders that contain the packages (["."] by default)
+include = ["*"]  # package names should match these glob patterns (["*"] by default)
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml"]
+
+[project]
+name = "oracle-object-tracker"
+version = "0.0.1"
+description = "A Python-based tool for tracking Oracle database object DDL with git"
+readme = "README.md"
+authors = [{ name = "Philip Moore", email = "prmoore77@hotmail.com" },
+           { name = "Stephen Weber", email = "sweber@truckcab.com" }
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["oracle", "object", "tracker", "git", "ddl"]
+dependencies = [
+    "click==8.1.*",
+    "codetiming==1.4.*",
+    "munch==4.0.*",
+    "pandas==2.2.*",
+    "python-dateutil==2.9.*",
+    "pytz==2024.*",
+    "PyYAML==6.0.*",
+    "SQLAlchemy==2.0.*",
+    "python-dotenv==1.0.*",
+    "requests==2.32.*",
+    "oracledb=="
+]
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+dev = ["bumpver", "pip-tools", "pytest"]
+
+[project.urls]
+Homepage = "https://github.com/prmoore77/oracle-object-tracker"
+
+[project.scripts]
+oracle-object-tracker = "oracle_object_tracker:main"
+
+[tool.bumpver]
+current_version = "0.0.1"
+version_pattern = "MAJOR.MINOR.PATCH[PYTAGNUM]"
+commit_message = "bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    '^version = "{version}"$',
+    '^current_version = "{version}"$',
+]
+"src/oracle_object_tracker/__init__.py" = [
+    '^__version__ = "{version}"$',
+]
