@@ -2,18 +2,18 @@ import logging
 import os
 import shutil
 import sys
+import tempfile
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import List
-from datetime import datetime
-
-import git
-from git import Repo
 
 import click
+import git
 import oracledb
 from codetiming import Timer
 from dotenv import load_dotenv
+from git import Repo
 
 from . import __version__ as app_version
 
@@ -25,7 +25,7 @@ OBJECT_TYPE_DBMS_METADATA_DICT = {
     "FUNCTION": {"short_name": "FUNCTION"},
     "INDEX": {"short_name": "INDEX"},
     "JAVA SOURCE": {"short_name": "JAVA_SOURCE"},
-    "JOB": {"short_name": "JOB"},
+    "JOB": {"short_name": "PROCOBJ"},
     "MATERIALIZED VIEW": {"short_name": "MATERIALIZED_VIEW"},
     "MATERIALIZED VIEW LOG": {"short_name": "MATERIALIZED_VIEW_LOG"},
     "PACKAGE": {"short_name": "PACKAGE_SPEC"},
@@ -148,6 +148,7 @@ class OracleDatabaseTracker:
                     FROM all_objects
                    WHERE owner = :schema
                      AND object_type = :object_type
+                     AND generated = 'N'
                      AND REGEXP_LIKE(object_name, :object_name_include_pattern)
               """
 
@@ -336,7 +337,7 @@ class OracleDatabaseTracker:
 @click.option(
     "--output-directory",
     type=str,
-    default=Path("output").as_posix(),
+    default=(Path(tempfile.gettempdir()) / "output").as_posix(),
     show_default=True,
     required=True,
     help="The path to the output directory - may be relative or absolute."
