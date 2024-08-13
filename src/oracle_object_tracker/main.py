@@ -182,7 +182,12 @@ class OracleDatabaseTracker:
 
             repo = None
             if self.git_repo and self.git_branch:
-                repo = Repo.clone_from(url=self.git_repo, to_path=output_path)
+                with Timer(name=f"Cloning git repository: {self.git_repo}",
+                           text=TIMER_TEXT,
+                           initial_text=True,
+                           logger=self.logger.info
+                           ):
+                    repo = Repo.clone_from(url=self.git_repo, to_path=output_path)
                 try:
                     repo.git.checkout(self.git_branch)
                 except git.GitCommandError:
