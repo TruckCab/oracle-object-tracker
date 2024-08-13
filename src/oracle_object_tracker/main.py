@@ -304,7 +304,7 @@ class OracleDatabaseTracker:
 @click.option(
     "--schema",
     type=str,
-    default=[os.getenv("DATABASE_USERNAME").upper()],
+    default=[os.getenv("DATABASE_USERNAME", "").upper()],
     show_default=True,
     required=True,
     multiple=True,
