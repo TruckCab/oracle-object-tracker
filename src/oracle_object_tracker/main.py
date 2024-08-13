@@ -1,21 +1,44 @@
 import logging
 import os
+import shutil
 import sys
 from contextlib import contextmanager
-import shutil
+from pathlib import Path
+from typing import List
+from datetime import datetime
+
+import git
+from git import Repo
 
 import click
-from dotenv import load_dotenv
-from typing import List
-from pathlib import Path
 import oracledb
 from codetiming import Timer
-import sqlglot
+from dotenv import load_dotenv
 
 from . import __version__ as app_version
 
 # Constants
 TIMER_TEXT = "{name}: Elapsed time: {:.4f} seconds"
+OBJECT_TYPE_DBMS_METADATA_DICT = {
+    "CLUSTER": {"short_name": "CLUSTER"},
+    "DATABASE LINK": {"short_name": "DB_LINK"},
+    "FUNCTION": {"short_name": "FUNCTION"},
+    "INDEX": {"short_name": "INDEX"},
+    "JAVA SOURCE": {"short_name": "JAVA_SOURCE"},
+    "JOB": {"short_name": "JOB"},
+    "MATERIALIZED VIEW": {"short_name": "MATERIALIZED_VIEW"},
+    "MATERIALIZED VIEW LOG": {"short_name": "MATERIALIZED_VIEW_LOG"},
+    "PACKAGE": {"short_name": "PACKAGE_SPEC"},
+    "PACKAGE BODY": {"short_name": "PACKAGE_BODY"},
+    "PROCEDURE": {"short_name": "PROCEDURE"},
+    "SEQUENCE": {"short_name": "SEQUENCE"},
+    "SYNONYM": {"short_name": "SYNONYM"},
+    "TABLE": {"short_name": "TABLE"},
+    "TRIGGER": {"short_name": "TRIGGER"},
+    "TYPE": {"short_name": "TYPE_SPEC"},
+    "TYPE BODY": {"short_name": "TYPE_BODY"},
+    "VIEW": {"short_name": "VIEW"}
+}
 
 # Setup logging
 logging.basicConfig(stream=sys.stdout)
@@ -34,8 +57,12 @@ class OracleDatabaseTracker:
                  port: int,
                  schemas: List[str],
                  object_types: List[str],
+                 object_name_include_pattern: str,
+                 object_name_exclude_pattern: str,
                  output_directory: str,
                  overwrite: bool,
+                 git_repo: str,
+                 git_branch: str,
                  logger: logging.Logger
                  ):
         self._username = username
@@ -47,8 +74,12 @@ class OracleDatabaseTracker:
 
         self.schemas = schemas
         self.object_types = object_types
+        self.object_name_include_pattern = object_name_include_pattern
+        self.object_name_exclude_pattern = object_name_exclude_pattern
         self.output_directory = output_directory
         self.overwrite = overwrite
+        self.git_repo = git_repo
+        self.git_branch = git_branch
         self.logger = logger
 
         oracledb.init_oracle_client(lib_dir=os.getenv("ORACLE_HOME"))
@@ -70,16 +101,18 @@ class OracleDatabaseTracker:
         with connection.cursor() as cursor:
             cursor.execute(statement=f"""
             BEGIN
-               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, name => 'CONSTRAINTS', value => TRUE);
-               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, name => 'REF_CONSTRAINTS', value => TRUE);
-               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, name => 'CONSTRAINT_USE_DEFAULT_INDEX', value => TRUE);
-               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, name => 'CONSTRAINTS_AS_ALTER', value => FALSE);
-               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, name => 'PRETTY', value => TRUE);
-               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, name => 'SQLTERMINATOR', value => TRUE);
-               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, name => 'SIZE_BYTE_KEYWORD', value => FALSE);
-               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, name => 'SEGMENT_ATTRIBUTES', value => TRUE);
-               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, name => 'STORAGE', value => FALSE);
-               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, name => 'TABLESPACE', value => TRUE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'CONSTRAINTS', VALUE => TRUE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'REF_CONSTRAINTS', VALUE => TRUE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'CONSTRAINT_USE_DEFAULT_INDEX', VALUE => TRUE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'CONSTRAINTS_AS_ALTER', VALUE => FALSE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'PRETTY', VALUE => TRUE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'SQLTERMINATOR', VALUE => TRUE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'SIZE_BYTE_KEYWORD', VALUE => FALSE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'SEGMENT_ATTRIBUTES', VALUE => TRUE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'STORAGE', VALUE => FALSE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'TABLESPACE', VALUE => TRUE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'PARTITIONING', VALUE => TRUE);
+               dbms_metadata.set_transform_param(transform_handle => dbms_metadata.session_transform, NAME => 'BODY', VALUE => FALSE);
             END;
             """)
 
@@ -111,16 +144,24 @@ class OracleDatabaseTracker:
                     schema: str,
                     object_type: str
                     ):
+        sql = f"""SELECT object_name
+                    FROM all_objects
+                   WHERE owner = :schema
+                     AND object_type = :object_type
+                     AND REGEXP_LIKE(object_name, :object_name_include_pattern)
+              """
+
+        additional_bind_vars = {}
+        if self.object_name_exclude_pattern:
+            sql += f"AND NOT REGEXP_LIKE(object_name, :object_name_exclude_pattern)\n"
+            additional_bind_vars["object_name_exclude_pattern"] = self.object_name_exclude_pattern
+
         with connection.cursor() as cursor:
-            sql = f"""SELECT object_name
-                        FROM all_objects
-                       WHERE owner = :schema
-                         AND object_type = :object_type
-                       ORDER BY object_name ASC
-                  """
             cursor.execute(statement=sql,
                            schema=schema,
-                           object_type=object_type
+                           object_type=object_type,
+                           object_name_include_pattern=self.object_name_include_pattern,
+                           **additional_bind_vars
                            )
             object_list = [row[0] for row in cursor]
 
@@ -129,6 +170,23 @@ class OracleDatabaseTracker:
     def export_objects(self):
         with self.get_db_connection() as connection:
             self.set_dbms_metadata_preferences(connection=connection)
+
+            output_path = Path(self.output_directory)
+            if output_path.exists():
+                if self.overwrite:
+                    shutil.rmtree(path=output_path.as_posix())
+                    output_path.mkdir(parents=True)
+                else:
+                    raise RuntimeError(
+                        f"Directory: {output_path.as_posix()} exists, aborting.")
+
+            repo = None
+            if self.git_repo and self.git_branch:
+                repo = Repo.clone_from(url=self.git_repo, to_path=output_path)
+                try:
+                    repo.git.checkout(self.git_branch)
+                except git.GitCommandError:
+                    repo.git.checkout(b=self.git_branch)
 
             with Timer(name=f"Exporting objects - for schemas: {self.schemas}",
                        text=TIMER_TEXT,
@@ -142,11 +200,6 @@ class OracleDatabaseTracker:
                                logger=self.logger.info
                                ):
                         schema_output_path_prefix = Path(f"{self.output_directory}/{schema}")
-                        if schema_output_path_prefix.exists():
-                            if self.overwrite:
-                                shutil.rmtree(path=schema_output_path_prefix.as_posix())
-                            else:
-                                raise RuntimeError(f"Directory: {schema_output_path_prefix.as_posix()} exists, aborting.")
 
                         for object_type in self.object_types:
                             with Timer(name=f"Exporting object type: {object_type} - for schema: {schema}",
@@ -154,7 +207,8 @@ class OracleDatabaseTracker:
                                        initial_text=True,
                                        logger=self.logger.info
                                        ):
-                                object_output_path_prefix = schema_output_path_prefix / object_type
+                                object_type_short_name = OBJECT_TYPE_DBMS_METADATA_DICT.get(object_type).get("short_name")
+                                object_output_path_prefix = schema_output_path_prefix / object_type_short_name
                                 if not object_output_path_prefix.exists():
                                     object_output_path_prefix.mkdir(parents=True)
 
@@ -170,12 +224,26 @@ class OracleDatabaseTracker:
                                                ):
                                         object_ddl = self.get_object_ddl(connection=connection,
                                                                          schema=schema,
-                                                                         object_type=object_type,
+                                                                         object_type=object_type_short_name,
                                                                          object_name=object_name
                                                                          )
                                         object_output_path = object_output_path_prefix / f"{object_name}.sql"
                                         with object_output_path.open(mode="w") as f:
                                             f.write(object_ddl)
+
+            if repo:
+                commit_message = f"Oracle Object Tracker - DDL export - {datetime.now()}."
+                with Timer(name=(f"Pushing changes to git repository: {self.git_repo} - branch: {self.git_branch}"
+                                 f"\n- with commit message: '{commit_message}'"
+                                 ),
+                           text=TIMER_TEXT,
+                           initial_text=True,
+                           logger=self.logger.info
+                           ):
+                    repo.git.add(all=True)
+                    repo.index.commit(message=f"Oracle Object Tracker - DDL export - {datetime.now()}.")
+                    origin = repo.remote(name="origin")
+                    origin.push(refspec=self.git_branch)
 
 
 @click.command()
@@ -239,11 +307,26 @@ class OracleDatabaseTracker:
 @click.option(
     "--object-type",
     type=str,
-    default=["TABLE", "VIEW"],
+    default=[key for key in OBJECT_TYPE_DBMS_METADATA_DICT.keys()],
     show_default=True,
     required=True,
     multiple=True,
     help="The object types to export."
+)
+@click.option(
+    "--object-name-include-pattern",
+    type=str,
+    default=".*",
+    show_default=True,
+    required=True,
+    help="The regexp pattern to use to filter object names to include in the export."
+)
+@click.option(
+    "--object-name-exclude-pattern",
+    type=str,
+    default=None,
+    required=False,
+    help="The regexp pattern to use to filter object names to exclude in the export."
 )
 @click.option(
     "--output-directory",
@@ -262,6 +345,24 @@ class OracleDatabaseTracker:
     help="Controls whether to overwrite any existing DDL export files in the output path."
 )
 @click.option(
+    "--git-repo",
+    type=str,
+    required=False,
+    help=("Allows you to specify a git repository to push the output files to.  The repository must be accessible via SSH.\n"
+          "Example: git@github.com:some-org/some-repo.git\n"
+          "See: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account "
+          "for more information on setting up SSH keys for GitHub."
+          )
+)
+@click.option(
+    "--git-branch",
+    type=str,
+    default="main",
+    show_default=True,
+    required=False,
+    help="Specify the git branch to push to - if the --git-repo arg is used."
+)
+@click.option(
     "--log-level",
     type=str,
     default=os.getenv("LOGGING_LEVEL", "INFO"),
@@ -277,8 +378,12 @@ def main(version: bool,
          port: int,
          schema: List[str],
          object_type: List[str],
+         object_name_include_pattern: str,
+         object_name_exclude_pattern: str,
          output_directory: str,
          overwrite: bool,
+         git_repo: str,
+         git_branch: str,
          log_level: str,
          ):
     if version:
@@ -299,8 +404,12 @@ def main(version: bool,
                                                     port=port,
                                                     schemas=schema,
                                                     object_types=object_type,
+                                                    object_name_include_pattern=object_name_include_pattern,
+                                                    object_name_exclude_pattern=object_name_exclude_pattern,
                                                     output_directory=output_directory,
                                                     overwrite=overwrite,
+                                                    git_repo=git_repo,
+                                                    git_branch=git_branch,
                                                     logger=logger
                                                     )
 
