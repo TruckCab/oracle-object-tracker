@@ -38,7 +38,8 @@ dependencies = [
     "SQLAlchemy==2.0.*",
     "python-dotenv==1.0.*",
     "requests==2.32.*",
-    "oracledb==2.3.*"
+    "oracledb==2.3.*",
+    "sqlglot==25.11.*"
 ]
 requires-python = ">=3.10"
 
