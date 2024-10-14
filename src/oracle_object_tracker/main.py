@@ -346,7 +346,7 @@ class OracleDatabaseTracker:
     help="The path to the output directory - may be relative or absolute."
 )
 @click.option(
-    "--overwrite",
+    "--overwrite/--no-overwrite",
     type=bool,
     default=False,
     show_default=True,
