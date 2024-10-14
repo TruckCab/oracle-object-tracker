@@ -55,21 +55,18 @@ Options:
   --version / --no-version        Prints the Oracle Object Tracker version and
                                   exits.  [required]
   --username TEXT                 The Oracle database username to connect
-                                  with.  [default: truck_cab; required]
+                                  with.  [required]
   --password TEXT                 The Oracle database password to connect
                                   with.  [required]
   --hostname TEXT                 The Oracle database hostname to connect to.
-                                  [default: oracle.truckcab.us; required]
+                                  [required]
   --service-name TEXT             The Oracle database service name to connect
-                                  to.  [default:
-                                  tcmpdb.sub10220134282.tcmvcn1.oraclevcn.com;
-                                  required]
+                                  to.  [required]
   --port INTEGER                  The Oracle database port to connect to.
-                                  [default: 1521; required]
+                                  [required]
   --schema TEXT                   The schema to export objects for, may be
                                   specified more than once.  Defaults to the
-                                  database username.  [default: TRUCK_CAB;
-                                  required]
+                                  database username.  [required]
   --object-type TEXT              The object types to export.  [default:
                                   CLUSTER, DATABASE LINK, FUNCTION, INDEX,
                                   JAVA SOURCE, JOB, MATERIALIZED VIEW,

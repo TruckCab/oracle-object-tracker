@@ -82,7 +82,10 @@ class OracleDatabaseTracker:
         self.git_branch = git_branch
         self.logger = logger
 
-        oracledb.init_oracle_client(lib_dir=os.getenv("ORACLE_HOME"))
+        try:
+            oracledb.init_oracle_client()
+        except Exception as e:
+            oracledb.init_oracle_client(lib_dir=os.getenv("ORACLE_LIB_DIR", os.environ["ORACLE_HOME"] + "/lib"))
 
     @contextmanager
     def get_db_connection(self) -> oracledb.Connection:
