@@ -2,7 +2,7 @@
 
 [<img src="https://img.shields.io/badge/GitHub-TruckCab%2Foracle--object--tracker-blue.svg?logo=Github">](https://github.com/TruckCab/oracle-object-tracker)
 [![oracle-object-tracker-ci](https://github.com/TruckCab/oracle-object-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/TruckCab/oracle-object-tracker/actions/workflows/ci.yml)
-[![Supported Python Versions](https://img.shields.io/pypi/pyversions/sidewinder-db)](https://pypi.org/project/sidewinder-db/)
+[![Supported Python Versions](https://img.shields.io/pypi/pyversions/oracle-object-tracker)](https://pypi.org/project/sidewinder-db/)
 [![PyPI version](https://badge.fury.io/py/oracle-object-tracker.svg)](https://badge.fury.io/py/oracle-object-tracker)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/oracle-object-tracker.svg)](https://pypi.org/project/oracle-object-tracker/)
 
