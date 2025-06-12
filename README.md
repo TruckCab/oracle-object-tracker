@@ -6,6 +6,8 @@
 [![PyPI version](https://badge.fury.io/py/oracle-object-tracker.svg)](https://badge.fury.io/py/oracle-object-tracker)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/oracle-object-tracker.svg)](https://pypi.org/project/oracle-object-tracker/)
 
+The Oracle Object Tracker is a command-line utility that allows you to export Oracle database objects (like tables, views, procedures, etc.) as DDL files. It supports filtering by object name patterns and can push the exported files to a specified Git repository.
+
 ## Install package
 You can install `oracle-object-tracker` from source.
 
@@ -55,15 +57,21 @@ Options:
   --version / --no-version        Prints the Oracle Object Tracker version and
                                   exits.  [required]
   --username TEXT                 The Oracle database username to connect
-                                  with.  [required]
+                                  with.  Defaults to environment variable
+                                  DATABASE_USERNAME if set.  [required]
   --password TEXT                 The Oracle database password to connect
-                                  with.  [required]
+                                  with.  Defaults to environment variable
+                                  DATABASE_PASSWORD if set.  [required]
   --hostname TEXT                 The Oracle database hostname to connect to.
-                                  [required]
+                                  Defaults to environment variable
+                                  DATABASE_HOSTNAME if set.  [required]
   --service-name TEXT             The Oracle database service name to connect
-                                  to.  [required]
+                                  to.  Defaults to environment variable
+                                  DATABASE_SERVICE_NAME if set.  [required]
   --port INTEGER                  The Oracle database port to connect to.
-                                  [required]
+                                  Defaults to environment variable
+                                  DATABASE_PORT if set, or 1521 if not set.
+                                  [default: 1521; required]
   --schema TEXT                   The schema to export objects for, may be
                                   specified more than once.  Defaults to the
                                   database username.  [required]
@@ -81,12 +89,10 @@ Options:
                                   The regexp pattern to use to filter object
                                   names to exclude in the export.
   --output-directory TEXT         The path to the output directory - may be
-                                  relative or absolute.  [default: /var/folder
-                                  s/c8/b5pj7nzx627_9tbw374v3r1h0000gn/T/output
-                                  ; required]
-  --overwrite BOOLEAN             Controls whether to overwrite any existing
+                                  relative or absolute.  [required]
+  --overwrite / --no-overwrite    Controls whether to overwrite any existing
                                   DDL export files in the output path.
-                                  [default: False; required]
+                                  [default: no-overwrite; required]
   --git-repo TEXT                 Allows you to specify a git repository to
                                   push the output files to.  The repository
                                   must be accessible via SSH. Example:

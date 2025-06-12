@@ -17,29 +17,29 @@ name = "oracle-object-tracker"
 version = "0.0.9"
 description = "A Python-based tool for tracking Oracle database object DDL with git"
 readme = "README.md"
-authors = [{ name = "Philip Moore", email = "prmoore77@hotmail.com" },
+authors = [{ name = "Philip Moore", email = "philip@gizmodata.com" },
            { name = "Stephen Weber", email = "sweber@truckcab.com" }
 ]
-license = { file = "LICENSE" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
 keywords = ["oracle", "object", "tracker", "git", "ddl"]
 dependencies = [
-    "click==8.1.*",
+    "click==8.2.*",
     "codetiming==1.4.*",
     "munch==4.0.*",
     "pandas==2.2.*",
     "python-dateutil==2.9.*",
-    "pytz==2024.*",
+    "pytz==2025.*",
     "PyYAML==6.0.*",
     "SQLAlchemy==2.0.*",
-    "python-dotenv==1.0.*",
+    "python-dotenv==1.1.*",
     "requests==2.32.*",
-    "oracledb==2.4.*",
-    "sqlglot==25.24.*",
+    "oracledb==3.1.*",
+    "sqlglot==26.28.*",
     "gitpython==3.1.*"
 ]
 requires-python = ">=3.10"
@@ -48,7 +48,7 @@ requires-python = ">=3.10"
 dev = ["bumpver", "pip-tools", "pytest"]
 
 [project.urls]
-Homepage = "https://github.com/prmoore77/oracle-object-tracker"
+Homepage = "https://github.com/TruckCab/oracle-object-tracker"
 
 [project.scripts]
 oracle-object-tracker = "oracle_object_tracker.main:main"
